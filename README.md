@@ -181,6 +181,7 @@ Todas as mensagens de erro ficam no enum `ErrorCode` (título + template da mens
 
 ### Outras decisões
 
+- **Mensagens de retorno em português, por escolha própria**: títulos, detalhes de erro e notificações estão em português para facilitar a avaliação do recrutador. O código-fonte (classes, métodos, variáveis) segue em inglês, como é padrão de mercado.
 - `BigDecimal` com escala 2 e `HALF_EVEN` para dinheiro; nunca `double`.
 - PostgreSQL em vez de H2 para que o lock se comporte como em produção; Testcontainers prova isso nos testes.
 - Flyway versiona o schema; `ddl-auto: validate` garante que entidade e schema estão alinhados.
