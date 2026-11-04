@@ -1,0 +1,6 @@
+ALTER TABLE accounts RENAME CONSTRAINT accounts_balance_check TO ck_accounts_balance_non_negative;
+ALTER TABLE transfers RENAME CONSTRAINT transfers_idempotency_key_key TO uk_transfers_idempotency_key;
+ALTER TABLE transfers RENAME CONSTRAINT transfers_amount_check TO ck_transfers_amount_positive;
+ALTER TABLE transfers RENAME CONSTRAINT transfers_check TO ck_transfers_distinct_accounts;
+ALTER TABLE transfers RENAME CONSTRAINT transfers_from_account_id_fkey TO fk_transfers_from_account;
+ALTER TABLE transfers RENAME CONSTRAINT transfers_to_account_id_fkey TO fk_transfers_to_account;

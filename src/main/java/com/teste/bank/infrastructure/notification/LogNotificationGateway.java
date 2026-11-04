@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 public class LogNotificationGateway implements NotificationGateway {
 
     private static final String RESILIENCE_INSTANCE = "notification";
+    private static final String SIMULATED_FAILURE_MESSAGE = "Falha simulada no provedor de notificação";
 
     private final double simulatedFailureRate;
 
@@ -25,7 +26,7 @@ public class LogNotificationGateway implements NotificationGateway {
     @CircuitBreaker(name = RESILIENCE_INSTANCE)
     public void notify(Long accountId, String message) {
         if (ThreadLocalRandom.current().nextDouble() < simulatedFailureRate) {
-            throw new NotificationDeliveryException("Falha simulada no provedor de notificação");
+            throw new NotificationDeliveryException(SIMULATED_FAILURE_MESSAGE);
         }
         log.info("Notificação enviada para a conta {}: {}", accountId, message);
     }

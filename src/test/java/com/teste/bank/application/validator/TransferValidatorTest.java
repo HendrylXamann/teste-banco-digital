@@ -3,63 +3,66 @@ package com.teste.bank.application.validator;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.teste.bank.domain.exception.ErrorCode;
 import com.teste.bank.domain.exception.InsufficientBalanceException;
 import com.teste.bank.domain.exception.InvalidTransferException;
 import com.teste.bank.domain.model.Account;
+import com.teste.bank.fixture.AccountFixture;
+import com.teste.bank.fixture.Amounts;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class TransferValidatorTest {
 
+    private static final BigDecimal ONE_CENT = new BigDecimal("0.01");
+
     @Test
     void shouldThrowWhenAccountsAreTheSame() {
-        assertThatThrownBy(() -> TransferValidator.validateDistinctAccounts(1L, 1L))
-                .isInstanceOf(InvalidTransferException.class);
+        assertThatThrownBy(() -> TransferValidator.validateDistinctAccounts(
+                AccountFixture.SOURCE_ID, AccountFixture.SOURCE_ID))
+                .isInstanceOf(InvalidTransferException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.SAME_ACCOUNT_TRANSFER);
     }
 
     @Test
     void shouldPassWhenAccountsAreDifferent() {
-        assertThatCode(() -> TransferValidator.validateDistinctAccounts(1L, 2L)).doesNotThrowAnyException();
+        assertThatCode(() -> TransferValidator.validateDistinctAccounts(
+                AccountFixture.SOURCE_ID, AccountFixture.DESTINATION_ID)).doesNotThrowAnyException();
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"0", "0.00", "-0.01", "-100.00"})
+    void shouldThrowWhenAmountIsNotPositive(String amount) {
+        BigDecimal value = amount == null ? null : new BigDecimal(amount);
+
+        assertThatThrownBy(() -> TransferValidator.validateAmount(value))
+                .isInstanceOf(InvalidTransferException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_AMOUNT);
     }
 
     @Test
-    void shouldThrowWhenAmountIsZero() {
-        assertThatThrownBy(() -> TransferValidator.validateAmount(BigDecimal.ZERO))
-                .isInstanceOf(InvalidTransferException.class);
+    void shouldPassWhenAmountIsOneCent() {
+        assertThatCode(() -> TransferValidator.validateAmount(ONE_CENT)).doesNotThrowAnyException();
     }
 
     @Test
-    void shouldThrowWhenAmountIsNegative() {
-        assertThatThrownBy(() -> TransferValidator.validateAmount(new BigDecimal("-1.00")))
-                .isInstanceOf(InvalidTransferException.class);
-    }
+    void shouldThrowWhenBalanceIsOneCentShort() {
+        Account account = AccountFixture.source(Amounts.TRANSFER);
 
-    @Test
-    void shouldThrowWhenAmountIsNull() {
-        assertThatThrownBy(() -> TransferValidator.validateAmount(null))
-                .isInstanceOf(InvalidTransferException.class);
-    }
-
-    @Test
-    void shouldThrowWhenBalanceIsInsufficient() {
-        Account account = accountWithBalance("50.00");
-
-        assertThatThrownBy(() -> TransferValidator.validateBalance(account, new BigDecimal("50.01")))
-                .isInstanceOf(InsufficientBalanceException.class);
+        assertThatThrownBy(() -> TransferValidator.validateBalance(account, Amounts.TRANSFER.add(ONE_CENT)))
+                .isInstanceOf(InsufficientBalanceException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INSUFFICIENT_BALANCE);
     }
 
     @Test
     void shouldPassWhenBalanceIsExactlyTheAmount() {
-        Account account = accountWithBalance("50.00");
+        Account account = AccountFixture.source(Amounts.TRANSFER);
 
-        assertThatCode(() -> TransferValidator.validateBalance(account, new BigDecimal("50.00")))
+        assertThatCode(() -> TransferValidator.validateBalance(account, Amounts.TRANSFER))
                 .doesNotThrowAnyException();
-    }
-
-    private Account accountWithBalance(String balance) {
-        Account account = new Account();
-        account.setId(1L);
-        account.setBalance(new BigDecimal(balance));
-        return account;
     }
 }

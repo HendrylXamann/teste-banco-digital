@@ -1,12 +1,12 @@
 package com.teste.bank.application.listener;
 
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.teste.bank.application.event.TransferCompletedEvent;
+import com.teste.bank.application.notification.NotificationMessage;
 import com.teste.bank.domain.gateway.NotificationGateway;
-import java.math.BigDecimal;
+import com.teste.bank.fixture.TransferFixture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,11 +24,15 @@ class TransferNotificationListenerTest {
 
     @Test
     void shouldNotifyPayerAndReceiver() {
-        TransferCompletedEvent event = new TransferCompletedEvent(7L, 1L, 2L, new BigDecimal("15.00"));
+        TransferCompletedEvent event = TransferFixture.completedEvent();
+        String amount = event.amount().toPlainString();
 
         listener.onTransferCompleted(event);
 
-        verify(notificationGateway).notify(eq(1L), contains("enviou R$ 15.00"));
-        verify(notificationGateway).notify(eq(2L), contains("recebeu R$ 15.00"));
+        verify(notificationGateway).notify(event.fromAccountId(),
+                NotificationMessage.TRANSFER_SENT.format(amount, event.toAccountId(), event.transferId()));
+        verify(notificationGateway).notify(event.toAccountId(),
+                NotificationMessage.TRANSFER_RECEIVED.format(amount, event.fromAccountId(), event.transferId()));
+        verifyNoMoreInteractions(notificationGateway);
     }
 }
