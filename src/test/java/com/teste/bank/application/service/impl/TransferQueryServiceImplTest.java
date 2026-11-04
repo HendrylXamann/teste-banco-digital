@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import com.teste.bank.application.service.StatementEntry;
 import com.teste.bank.domain.exception.AccountNotFoundException;
-import com.teste.bank.domain.model.Transfer;
 import com.teste.bank.domain.model.TransferDirection;
 import com.teste.bank.domain.repository.AccountRepository;
 import com.teste.bank.domain.repository.TransferRepository;
@@ -26,7 +25,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
@@ -47,7 +45,7 @@ class TransferQueryServiceImplTest {
     @Test
     void shouldMapDebitAndCreditDirections() {
         when(accountRepository.existsById(AccountFixture.SOURCE_ID)).thenReturn(true);
-        List<Transfer> transfers = List.of(
+        var transfers = List.of(
                 TransferFixture.transfer(TransferFixture.TRANSFER_ID, AccountFixture.SOURCE_ID,
                         AccountFixture.DESTINATION_ID, Amounts.TRANSFER),
                 TransferFixture.transfer(TransferFixture.OTHER_TRANSFER_ID, THIRD_ACCOUNT_ID,
@@ -55,7 +53,7 @@ class TransferQueryServiceImplTest {
         when(transferRepository.findStatementByAccountId(eq(AccountFixture.SOURCE_ID), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(transfers));
 
-        Page<StatementEntry> statement = transferQueryService.findStatement(AccountFixture.SOURCE_ID, 0, 20);
+        var statement = transferQueryService.findStatement(AccountFixture.SOURCE_ID, 0, 20);
 
         assertThat(statement.getContent()).extracting(StatementEntry::direction)
                 .containsExactly(TransferDirection.DEBIT, TransferDirection.CREDIT);
@@ -78,7 +76,7 @@ class TransferQueryServiceImplTest {
         when(accountRepository.existsById(AccountFixture.SOURCE_ID)).thenReturn(true);
         when(transferRepository.findStatementByAccountId(eq(AccountFixture.SOURCE_ID), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
-        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        var captor = ArgumentCaptor.forClass(Pageable.class);
 
         transferQueryService.findStatement(AccountFixture.SOURCE_ID, page, size);
 

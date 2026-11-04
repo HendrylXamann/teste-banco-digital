@@ -7,14 +7,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
 
 class ProblemDetailFactoryTest {
 
     @ParameterizedTest
     @EnumSource(ErrorCode.class)
     void shouldBuildProblemDetailForEveryErrorCode(ErrorCode errorCode) {
-        ProblemDetail problem = ProblemDetailFactory.create(errorCode, errorCode.getMessageTemplate());
+        var problem = ProblemDetailFactory.create(errorCode, errorCode.getMessageTemplate());
 
         assertThat(problem.getStatus()).isEqualTo(ProblemDetailFactory.statusOf(errorCode).value());
         assertThat(problem.getTitle()).isEqualTo(errorCode.getTitle());

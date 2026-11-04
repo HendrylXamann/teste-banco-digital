@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.teste.bank.api.dto.TransferRequest;
 import com.teste.bank.application.service.TransferCommand;
-import com.teste.bank.application.service.TransferResult;
 import com.teste.bank.application.service.TransferService;
 import com.teste.bank.domain.exception.AccountNotFoundException;
 import com.teste.bank.domain.exception.ErrorCode;
@@ -52,8 +51,8 @@ class TransferControllerTest {
     private TransferService transferService;
 
     static Stream<Arguments> invalidRequests() {
-        Long source = AccountFixture.SOURCE_ID;
-        Long destination = AccountFixture.DESTINATION_ID;
+        var source = AccountFixture.SOURCE_ID;
+        var destination = AccountFixture.DESTINATION_ID;
         return Stream.of(
                 Arguments.of(TransferFixture.request(null, destination, Amounts.TRANSFER), "fromAccountId"),
                 Arguments.of(TransferFixture.request(source, null, Amounts.TRANSFER), "toAccountId"),
@@ -174,7 +173,7 @@ class TransferControllerTest {
 
     private void stubTransferResult(boolean created) {
         when(transferService.transfer(any(TransferCommand.class)))
-                .thenReturn(new TransferResult(TransferFixture.savedTransfer(), created));
+                .thenReturn(TransferFixture.result(TransferFixture.savedTransfer(), created));
     }
 
     private void stubTransferFailure(RuntimeException exception) {

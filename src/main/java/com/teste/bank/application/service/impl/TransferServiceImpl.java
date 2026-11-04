@@ -13,6 +13,7 @@ import com.teste.bank.domain.repository.TransferRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -30,18 +31,18 @@ public class TransferServiceImpl implements TransferService {
     @Transactional
     public TransferResult transfer(TransferCommand command) {
         return transferRepository.findByIdempotencyKey(command.idempotencyKey())
-                .map(existing -> new TransferResult(existing, false))
-                .orElseGet(() -> new TransferResult(execute(command), true));
+                .map(existing -> TransferResult.builder().transfer(existing).created(false).build())
+                .orElseGet(() -> TransferResult.builder().transfer(execute(command)).created(true).build());
     }
 
     private Transfer execute(TransferCommand command) {
-        BigDecimal amount = normalize(command.amount());
+        var amount = normalize(command.amount());
         TransferValidator.validateAmount(amount);
         TransferValidator.validateDistinctAccounts(command.fromAccountId(), command.toAccountId());
-        LockedAccounts accounts = lockAccountsInOrder(command.fromAccountId(), command.toAccountId());
+        var accounts = lockAccountsInOrder(command.fromAccountId(), command.toAccountId());
         TransferValidator.validateBalance(accounts.source(), amount);
         moveBalance(accounts, amount);
-        Transfer transfer = saveTransfer(command, amount);
+        var transfer = saveTransfer(command, amount);
         publishEvent(transfer);
         return transfer;
     }
@@ -51,11 +52,13 @@ public class TransferServiceImpl implements TransferService {
     }
 
     private LockedAccounts lockAccountsInOrder(Long fromAccountId, Long toAccountId) {
-        Account first = lockAccount(Math.min(fromAccountId, toAccountId));
-        Account second = lockAccount(Math.max(fromAccountId, toAccountId));
-        return fromAccountId < toAccountId
-                ? new LockedAccounts(first, second)
-                : new LockedAccounts(second, first);
+        var first = lockAccount(Math.min(fromAccountId, toAccountId));
+        var second = lockAccount(Math.max(fromAccountId, toAccountId));
+        var sourceIsFirst = fromAccountId < toAccountId;
+        return LockedAccounts.builder()
+                .source(sourceIsFirst ? first : second)
+                .destination(sourceIsFirst ? second : first)
+                .build();
     }
 
     private Account lockAccount(Long accountId) {
@@ -69,23 +72,26 @@ public class TransferServiceImpl implements TransferService {
     }
 
     private Transfer saveTransfer(TransferCommand command, BigDecimal amount) {
-        Transfer transfer = new Transfer();
-        transfer.setIdempotencyKey(command.idempotencyKey());
-        transfer.setFromAccountId(command.fromAccountId());
-        transfer.setToAccountId(command.toAccountId());
-        transfer.setAmount(amount);
-        transfer.setCreatedAt(LocalDateTime.now());
+        var transfer = Transfer.builder()
+                .idempotencyKey(command.idempotencyKey())
+                .fromAccountId(command.fromAccountId())
+                .toAccountId(command.toAccountId())
+                .amount(amount)
+                .createdAt(LocalDateTime.now())
+                .build();
         return transferRepository.save(transfer);
     }
 
     private void publishEvent(Transfer transfer) {
-        eventPublisher.publishEvent(new TransferCompletedEvent(
-                transfer.getId(),
-                transfer.getFromAccountId(),
-                transfer.getToAccountId(),
-                transfer.getAmount()));
+        eventPublisher.publishEvent(TransferCompletedEvent.builder()
+                .transferId(transfer.getId())
+                .fromAccountId(transfer.getFromAccountId())
+                .toAccountId(transfer.getToAccountId())
+                .amount(transfer.getAmount())
+                .build());
     }
 
+    @Builder
     private record LockedAccounts(Account source, Account destination) {
     }
 }

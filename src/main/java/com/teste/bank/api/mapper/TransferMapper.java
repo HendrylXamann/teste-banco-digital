@@ -13,24 +13,31 @@ public final class TransferMapper {
     }
 
     public static TransferCommand toCommand(TransferRequest request, String idempotencyKey) {
-        return new TransferCommand(request.fromAccountId(), request.toAccountId(), request.amount(), idempotencyKey);
+        return TransferCommand.builder()
+                .fromAccountId(request.fromAccountId())
+                .toAccountId(request.toAccountId())
+                .amount(request.amount())
+                .idempotencyKey(idempotencyKey)
+                .build();
     }
 
     public static TransferResponse toResponse(Transfer transfer) {
-        return new TransferResponse(
-                transfer.getId(),
-                transfer.getFromAccountId(),
-                transfer.getToAccountId(),
-                transfer.getAmount(),
-                transfer.getCreatedAt());
+        return TransferResponse.builder()
+                .id(transfer.getId())
+                .fromAccountId(transfer.getFromAccountId())
+                .toAccountId(transfer.getToAccountId())
+                .amount(transfer.getAmount())
+                .createdAt(transfer.getCreatedAt())
+                .build();
     }
 
     public static StatementItemResponse toStatementItem(StatementEntry entry) {
-        return new StatementItemResponse(
-                entry.transferId(),
-                entry.direction(),
-                entry.counterpartAccountId(),
-                entry.amount(),
-                entry.createdAt());
+        return StatementItemResponse.builder()
+                .transferId(entry.transferId())
+                .direction(entry.direction())
+                .counterpartAccountId(entry.counterpartAccountId())
+                .amount(entry.amount())
+                .createdAt(entry.createdAt())
+                .build();
     }
 }

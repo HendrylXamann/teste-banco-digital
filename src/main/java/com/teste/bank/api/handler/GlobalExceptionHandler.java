@@ -41,7 +41,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
-        String cause = String.valueOf(ex.getMostSpecificCause().getMessage());
+        var cause = String.valueOf(ex.getMostSpecificCause().getMessage());
         log.warn("Violação de integridade: {}", cause);
         return cause.contains(IDEMPOTENCY_CONSTRAINT)
                 ? ProblemDetailFactory.create(ErrorCode.IDEMPOTENCY_KEY_CONFLICT)
@@ -72,7 +72,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode status,
             @NonNull WebRequest request) {
-        Map<String, String> errors = new LinkedHashMap<>();
+        var errors = new LinkedHashMap<String, String>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 errors.putIfAbsent(error.getField(), String.valueOf(error.getDefaultMessage())));
         decorateInvalidFields(ex.getBody(), errors);
@@ -85,7 +85,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode status,
             @NonNull WebRequest request) {
-        Map<String, String> errors = new LinkedHashMap<>();
+        var errors = new LinkedHashMap<String, String>();
         ex.getParameterValidationResults().forEach(result -> collectErrors(result, errors));
         decorateInvalidFields(ex.getBody(), errors);
         return super.handleHandlerMethodValidationException(ex, headers, status, request);
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpStatusCode status,
             @NonNull WebRequest request) {
         if (ex instanceof MissingRequestHeaderException missingHeader) {
-            ErrorCode code = ErrorCode.MISSING_HEADER;
+            var code = ErrorCode.MISSING_HEADER;
             ProblemDetailFactory.decorate(ex.getBody(), code, code.message(missingHeader.getHeaderName()));
         }
         return super.handleServletRequestBindingException(ex, headers, status, request);
@@ -110,7 +110,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode status,
             @NonNull WebRequest request) {
-        ProblemDetail body = ProblemDetailFactory.create(ErrorCode.MALFORMED_REQUEST);
+        var body = ProblemDetailFactory.create(ErrorCode.MALFORMED_REQUEST);
         return handleExceptionInternal(ex, body, headers, status, request);
     }
 
@@ -120,13 +120,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode status,
             @NonNull WebRequest request) {
-        ErrorCode code = ErrorCode.INVALID_PARAMETER;
-        ProblemDetail body = ProblemDetailFactory.create(code, code.message(ex.getPropertyName()));
+        var code = ErrorCode.INVALID_PARAMETER;
+        var body = ProblemDetailFactory.create(code, code.message(ex.getPropertyName()));
         return handleExceptionInternal(ex, body, headers, status, request);
     }
 
     private void decorateInvalidFields(ProblemDetail body, Map<String, String> errors) {
-        ErrorCode code = ErrorCode.INVALID_FIELDS;
+        var code = ErrorCode.INVALID_FIELDS;
         ProblemDetailFactory.decorate(body, code, code.message());
         body.setProperty(ERRORS_PROPERTY, errors);
     }
@@ -137,7 +137,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     errors.putIfAbsent(error.getField(), String.valueOf(error.getDefaultMessage())));
             return;
         }
-        String parameterName = String.valueOf(result.getMethodParameter().getParameterName());
+        var parameterName = String.valueOf(result.getMethodParameter().getParameterName());
         result.getResolvableErrors().forEach(error ->
                 errors.putIfAbsent(parameterName, String.valueOf(error.getDefaultMessage())));
     }

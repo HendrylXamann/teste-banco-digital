@@ -3,7 +3,6 @@ package com.teste.bank.application.listener;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.teste.bank.application.event.TransferCompletedEvent;
 import com.teste.bank.application.notification.NotificationMessage;
 import com.teste.bank.domain.gateway.NotificationGateway;
 import com.teste.bank.fixture.TransferFixture;
@@ -24,8 +23,8 @@ class TransferNotificationListenerTest {
 
     @Test
     void shouldNotifyPayerAndReceiver() {
-        TransferCompletedEvent event = TransferFixture.completedEvent();
-        String amount = event.amount().toPlainString();
+        var event = TransferFixture.completedEvent();
+        var amount = event.amount().toPlainString();
 
         listener.onTransferCompleted(event);
 

@@ -31,7 +31,7 @@ class AccountServiceImplTest {
     void shouldCreateAccountWithTrimmedNameAndNormalizedBalance() {
         when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Account account = accountService.create("  " + AccountFixture.NAME + "  ", Amounts.ONE_DECIMAL);
+        var account = accountService.create("  " + AccountFixture.NAME + "  ", Amounts.ONE_DECIMAL);
 
         assertThat(account.getName()).isEqualTo(AccountFixture.NAME);
         assertThat(account.getBalance()).isEqualTo(Amounts.ONE_DECIMAL_NORMALIZED);
@@ -42,14 +42,14 @@ class AccountServiceImplTest {
     void shouldCreateAccountWithZeroBalance() {
         when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Account account = accountService.create(AccountFixture.NAME, Amounts.ZERO);
+        var account = accountService.create(AccountFixture.NAME, Amounts.ZERO);
 
         assertThat(account.getBalance()).isEqualByComparingTo(Amounts.ZERO);
     }
 
     @Test
     void shouldReturnAccountWhenFound() {
-        Account account = AccountFixture.source(Amounts.BALANCE);
+        var account = AccountFixture.source(Amounts.BALANCE);
         when(accountRepository.findById(AccountFixture.SOURCE_ID)).thenReturn(Optional.of(account));
 
         assertThat(accountService.findById(AccountFixture.SOURCE_ID)).isSameAs(account);

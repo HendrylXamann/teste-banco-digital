@@ -10,8 +10,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.teste.bank.application.event.TransferCompletedEvent;
-import com.teste.bank.application.service.TransferCommand;
-import com.teste.bank.application.service.TransferResult;
 import com.teste.bank.domain.exception.AccountNotFoundException;
 import com.teste.bank.domain.exception.ErrorCode;
 import com.teste.bank.domain.exception.InsufficientBalanceException;
@@ -32,7 +30,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -59,11 +56,11 @@ class TransferServiceImplTest {
 
     @Test
     void shouldTransferAndUpdateBothBalances() {
-        Account source = stubLocked(AccountFixture.source(Amounts.BALANCE));
-        Account destination = stubLocked(AccountFixture.destination(Amounts.SMALL));
+        var source = stubLocked(AccountFixture.source(Amounts.BALANCE));
+        var destination = stubLocked(AccountFixture.destination(Amounts.SMALL));
         stubSaveTransfer();
 
-        TransferResult result = transferService.transfer(TransferFixture.validCommand());
+        var result = transferService.transfer(TransferFixture.validCommand());
 
         assertThat(result.created()).isTrue();
         assertThat(source.getBalance()).isEqualByComparingTo(Amounts.BALANCE.subtract(Amounts.TRANSFER));
@@ -73,7 +70,7 @@ class TransferServiceImplTest {
 
     @Test
     void shouldAllowTransferOfEntireBalance() {
-        Account source = stubLocked(AccountFixture.source(Amounts.TRANSFER));
+        var source = stubLocked(AccountFixture.source(Amounts.TRANSFER));
         stubLocked(AccountFixture.destination(Amounts.ZERO));
         stubSaveTransfer();
 
@@ -87,21 +84,21 @@ class TransferServiceImplTest {
         stubLocked(AccountFixture.source(Amounts.BALANCE));
         stubLocked(AccountFixture.destination(Amounts.ZERO));
         stubSaveTransfer();
-        TransferCommand command = TransferFixture.command(
+        var command = TransferFixture.command(
                 AccountFixture.SOURCE_ID, AccountFixture.DESTINATION_ID, Amounts.ONE_DECIMAL);
 
-        TransferResult result = transferService.transfer(command);
+        var result = transferService.transfer(command);
 
         assertThat(result.transfer().getAmount()).isEqualTo(Amounts.ONE_DECIMAL_NORMALIZED);
     }
 
     @Test
     void shouldReturnExistingTransferWhenIdempotencyKeyAlreadyUsed() {
-        Transfer existing = TransferFixture.savedTransfer();
-        TransferCommand command = TransferFixture.validCommand();
+        var existing = TransferFixture.savedTransfer();
+        var command = TransferFixture.validCommand();
         when(transferRepository.findByIdempotencyKey(command.idempotencyKey())).thenReturn(Optional.of(existing));
 
-        TransferResult result = transferService.transfer(command);
+        var result = transferService.transfer(command);
 
         assertThat(result.created()).isFalse();
         assertThat(result.transfer()).isSameAs(existing);
@@ -128,7 +125,7 @@ class TransferServiceImplTest {
 
     @Test
     void shouldRejectSameAccountWithoutLocking() {
-        TransferCommand command = TransferFixture.command(
+        var command = TransferFixture.command(
                 AccountFixture.SOURCE_ID, AccountFixture.SOURCE_ID, Amounts.TRANSFER);
 
         assertThatThrownBy(() -> transferService.transfer(command))
@@ -140,7 +137,7 @@ class TransferServiceImplTest {
     @ParameterizedTest
     @MethodSource("invalidAmounts")
     void shouldRejectInvalidAmountWithoutLocking(BigDecimal amount) {
-        TransferCommand command = TransferFixture.command(
+        var command = TransferFixture.command(
                 AccountFixture.SOURCE_ID, AccountFixture.DESTINATION_ID, amount);
 
         assertThatThrownBy(() -> transferService.transfer(command))
@@ -154,12 +151,12 @@ class TransferServiceImplTest {
         stubLocked(AccountFixture.source(Amounts.ZERO));
         stubLocked(AccountFixture.destination(Amounts.BALANCE));
         stubSaveTransfer();
-        TransferCommand reverse = TransferFixture.command(
+        var reverse = TransferFixture.command(
                 AccountFixture.DESTINATION_ID, AccountFixture.SOURCE_ID, Amounts.TRANSFER);
 
         transferService.transfer(reverse);
 
-        InOrder lockOrder = inOrder(accountRepository);
+        var lockOrder = inOrder(accountRepository);
         lockOrder.verify(accountRepository).findByIdForUpdate(AccountFixture.SOURCE_ID);
         lockOrder.verify(accountRepository).findByIdForUpdate(AccountFixture.DESTINATION_ID);
     }
@@ -169,7 +166,7 @@ class TransferServiceImplTest {
         stubLocked(AccountFixture.source(Amounts.BALANCE));
         stubLocked(AccountFixture.destination(Amounts.ZERO));
         stubSaveTransfer();
-        ArgumentCaptor<TransferCompletedEvent> captor = ArgumentCaptor.forClass(TransferCompletedEvent.class);
+        var captor = ArgumentCaptor.forClass(TransferCompletedEvent.class);
 
         transferService.transfer(TransferFixture.validCommand());
 
@@ -180,7 +177,7 @@ class TransferServiceImplTest {
 
     @Test
     void shouldNotSaveNorPublishWhenBalanceIsInsufficient() {
-        Account source = stubLocked(AccountFixture.source(Amounts.SMALL));
+        var source = stubLocked(AccountFixture.source(Amounts.SMALL));
         stubLocked(AccountFixture.destination(Amounts.ZERO));
 
         assertThatThrownBy(() -> transferService.transfer(TransferFixture.validCommand()))
@@ -198,7 +195,7 @@ class TransferServiceImplTest {
 
     private void stubSaveTransfer() {
         when(transferRepository.save(any(Transfer.class))).thenAnswer(invocation -> {
-            Transfer transfer = invocation.getArgument(0);
+            var transfer = invocation.getArgument(0, Transfer.class);
             transfer.setId(TransferFixture.TRANSFER_ID);
             return transfer;
         });

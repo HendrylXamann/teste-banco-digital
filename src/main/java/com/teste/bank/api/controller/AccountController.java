@@ -8,7 +8,6 @@ import com.teste.bank.api.mapper.AccountMapper;
 import com.teste.bank.api.mapper.TransferMapper;
 import com.teste.bank.application.service.AccountService;
 import com.teste.bank.application.service.TransferQueryService;
-import com.teste.bank.domain.model.Account;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,8 +34,8 @@ public class AccountController {
     @PostMapping
     @Operation(summary = "Cria uma conta com saldo inicial")
     public ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest request) {
-        Account account = accountService.create(request.name(), request.initialBalance());
-        URI location = URI.create("/accounts/" + account.getId());
+        var account = accountService.create(request.name(), request.initialBalance());
+        var location = URI.create("/accounts/" + account.getId());
         return ResponseEntity.created(location).body(AccountMapper.toResponse(account));
     }
 

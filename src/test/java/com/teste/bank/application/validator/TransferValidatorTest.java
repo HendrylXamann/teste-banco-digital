@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.teste.bank.domain.exception.ErrorCode;
 import com.teste.bank.domain.exception.InsufficientBalanceException;
 import com.teste.bank.domain.exception.InvalidTransferException;
-import com.teste.bank.domain.model.Account;
 import com.teste.bank.fixture.AccountFixture;
 import com.teste.bank.fixture.Amounts;
 import java.math.BigDecimal;
@@ -37,7 +36,7 @@ class TransferValidatorTest {
     @NullSource
     @ValueSource(strings = {"0", "0.00", "-0.01", "-100.00"})
     void shouldThrowWhenAmountIsNotPositive(String amount) {
-        BigDecimal value = amount == null ? null : new BigDecimal(amount);
+        var value = amount == null ? null : new BigDecimal(amount);
 
         assertThatThrownBy(() -> TransferValidator.validateAmount(value))
                 .isInstanceOf(InvalidTransferException.class)
@@ -51,7 +50,7 @@ class TransferValidatorTest {
 
     @Test
     void shouldThrowWhenBalanceIsOneCentShort() {
-        Account account = AccountFixture.source(Amounts.TRANSFER);
+        var account = AccountFixture.source(Amounts.TRANSFER);
 
         assertThatThrownBy(() -> TransferValidator.validateBalance(account, Amounts.TRANSFER.add(ONE_CENT)))
                 .isInstanceOf(InsufficientBalanceException.class)
@@ -60,7 +59,7 @@ class TransferValidatorTest {
 
     @Test
     void shouldPassWhenBalanceIsExactlyTheAmount() {
-        Account account = AccountFixture.source(Amounts.TRANSFER);
+        var account = AccountFixture.source(Amounts.TRANSFER);
 
         assertThatCode(() -> TransferValidator.validateBalance(account, Amounts.TRANSFER))
                 .doesNotThrowAnyException();

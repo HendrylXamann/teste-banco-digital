@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.teste.bank.api.dto.CreateAccountRequest;
 import com.teste.bank.application.service.AccountService;
-import com.teste.bank.application.service.StatementEntry;
 import com.teste.bank.application.service.TransferQueryService;
 import com.teste.bank.domain.exception.AccountNotFoundException;
 import com.teste.bank.domain.exception.ErrorCode;
@@ -24,7 +23,6 @@ import com.teste.bank.fixture.AccountFixture;
 import com.teste.bank.fixture.Amounts;
 import com.teste.bank.fixture.TransferFixture;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -144,8 +142,7 @@ class AccountControllerTest {
 
     @Test
     void shouldReturnStatement() throws Exception {
-        StatementEntry entry = new StatementEntry(TransferFixture.TRANSFER_ID, TransferDirection.DEBIT,
-                AccountFixture.DESTINATION_ID, Amounts.TRANSFER, LocalDateTime.now());
+        var entry = TransferFixture.statementEntry(TransferDirection.DEBIT, AccountFixture.DESTINATION_ID);
         when(transferQueryService.findStatement(AccountFixture.SOURCE_ID, 0, 20))
                 .thenReturn(new PageImpl<>(List.of(entry)));
 

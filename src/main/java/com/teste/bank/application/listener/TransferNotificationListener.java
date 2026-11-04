@@ -18,7 +18,7 @@ public class TransferNotificationListener {
     @Async("notificationExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTransferCompleted(TransferCompletedEvent event) {
-        String amount = event.amount().toPlainString();
+        var amount = event.amount().toPlainString();
         notificationGateway.notify(event.fromAccountId(),
                 NotificationMessage.TRANSFER_SENT.format(amount, event.toAccountId(), event.transferId()));
         notificationGateway.notify(event.toAccountId(),

@@ -15,7 +15,7 @@ class ErrorCodeTest {
 
     @Test
     void shouldExposeMessageThroughBusinessException() {
-        BusinessException exception = new InsufficientBalanceException(AccountFixture.SOURCE_ID);
+        var exception = new InsufficientBalanceException(AccountFixture.SOURCE_ID);
 
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INSUFFICIENT_BALANCE);
         assertThat(exception.getMessage()).isEqualTo(ErrorCode.INSUFFICIENT_BALANCE.message(AccountFixture.SOURCE_ID));

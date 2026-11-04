@@ -20,10 +20,11 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public Account create(String name, BigDecimal initialBalance) {
-        Account account = new Account();
-        account.setName(name.trim());
-        account.setBalance(initialBalance.setScale(2, RoundingMode.HALF_EVEN));
-        account.setCreatedAt(LocalDateTime.now());
+        var account = Account.builder()
+                .name(name.trim())
+                .balance(initialBalance.setScale(2, RoundingMode.HALF_EVEN))
+                .createdAt(LocalDateTime.now())
+                .build();
         return accountRepository.save(account);
     }
 

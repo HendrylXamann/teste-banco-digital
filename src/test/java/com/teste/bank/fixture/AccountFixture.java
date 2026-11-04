@@ -18,12 +18,12 @@ public final class AccountFixture {
     }
 
     public static Account account(Long id, BigDecimal balance) {
-        Account account = new Account();
-        account.setId(id);
-        account.setName(NAME);
-        account.setBalance(balance);
-        account.setCreatedAt(LocalDateTime.now());
-        return account;
+        return Account.builder()
+                .id(id)
+                .name(NAME)
+                .balance(balance)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     public static Account source(BigDecimal balance) {
@@ -35,7 +35,10 @@ public final class AccountFixture {
     }
 
     public static CreateAccountRequest createRequest(String name, BigDecimal initialBalance) {
-        return new CreateAccountRequest(name, initialBalance);
+        return CreateAccountRequest.builder()
+                .name(name)
+                .initialBalance(initialBalance)
+                .build();
     }
 
     public static CreateAccountRequest validCreateRequest() {

@@ -10,7 +10,6 @@ import com.teste.bank.domain.repository.TransferRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,18 +32,19 @@ public class TransferQueryServiceImpl implements TransferQueryService {
         if (!accountRepository.existsById(accountId)) {
             throw new AccountNotFoundException(accountId);
         }
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE), NEWEST_FIRST);
+        var pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE), NEWEST_FIRST);
         return transferRepository.findStatementByAccountId(accountId, pageable)
                 .map(transfer -> toEntry(transfer, accountId));
     }
 
     private StatementEntry toEntry(Transfer transfer, Long accountId) {
-        boolean isDebit = transfer.getFromAccountId().equals(accountId);
-        return new StatementEntry(
-                transfer.getId(),
-                isDebit ? TransferDirection.DEBIT : TransferDirection.CREDIT,
-                isDebit ? transfer.getToAccountId() : transfer.getFromAccountId(),
-                transfer.getAmount(),
-                transfer.getCreatedAt());
+        var isDebit = transfer.getFromAccountId().equals(accountId);
+        return StatementEntry.builder()
+                .transferId(transfer.getId())
+                .direction(isDebit ? TransferDirection.DEBIT : TransferDirection.CREDIT)
+                .counterpartAccountId(isDebit ? transfer.getToAccountId() : transfer.getFromAccountId())
+                .amount(transfer.getAmount())
+                .createdAt(transfer.getCreatedAt())
+                .build();
     }
 }

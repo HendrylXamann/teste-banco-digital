@@ -9,6 +9,11 @@ public final class AccountMapper {
     }
 
     public static AccountResponse toResponse(Account account) {
-        return new AccountResponse(account.getId(), account.getName(), account.getBalance(), account.getCreatedAt());
+        return AccountResponse.builder()
+                .id(account.getId())
+                .name(account.getName())
+                .balance(account.getBalance())
+                .createdAt(account.getCreatedAt())
+                .build();
     }
 }

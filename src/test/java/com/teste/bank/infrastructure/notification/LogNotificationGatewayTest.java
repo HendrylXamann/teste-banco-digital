@@ -9,14 +9,14 @@ class LogNotificationGatewayTest {
 
     @Test
     void shouldSendWhenProviderIsHealthy() {
-        LogNotificationGateway gateway = new LogNotificationGateway(0.0);
+        var gateway = new LogNotificationGateway(0.0);
 
         assertThatCode(() -> gateway.notify(1L, "mensagem")).doesNotThrowAnyException();
     }
 
     @Test
     void shouldThrowWhenProviderFails() {
-        LogNotificationGateway gateway = new LogNotificationGateway(1.0);
+        var gateway = new LogNotificationGateway(1.0);
 
         assertThatThrownBy(() -> gateway.notify(1L, "mensagem"))
                 .isInstanceOf(NotificationDeliveryException.class);
@@ -24,7 +24,7 @@ class LogNotificationGatewayTest {
 
     @Test
     void shouldSwallowFailureInFallback() {
-        LogNotificationGateway gateway = new LogNotificationGateway(1.0);
+        var gateway = new LogNotificationGateway(1.0);
 
         assertThatCode(() -> gateway.notifyFallback(1L, "mensagem", new NotificationDeliveryException("falha")))
                 .doesNotThrowAnyException();
