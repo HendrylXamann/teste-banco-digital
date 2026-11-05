@@ -35,7 +35,8 @@ public class TransferController {
             description = "Retorna 201 para transferência nova e 200 quando a Idempotency-Key já foi usada")
     public ResponseEntity<TransferResponse> transfer(
             @Parameter(in = ParameterIn.HEADER, required = true,
-                    description = "Chave única por transferência, ex.: um UUID")
+                    description = "Chave única por transferência, gere uma em formato UUID para testar. "
+                            + "Ex: 3f6c2a9e-1b7d-4c8a-9e21-7d4e5f6a8b90 ")
             @RequestHeader(IDEMPOTENCY_HEADER) @NotBlank @Size(max = 64) String idempotencyKey,
             @Valid @RequestBody TransferRequest request) {
         var result = transferService.transfer(TransferMapper.toCommand(request, idempotencyKey));
