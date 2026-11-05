@@ -24,14 +24,16 @@ public class LogNotificationGateway implements NotificationGateway {
     @Override
     @Retry(name = RESILIENCE_INSTANCE, fallbackMethod = "notifyFallback")
     @CircuitBreaker(name = RESILIENCE_INSTANCE)
-    public void notify(Long accountId, String message) {
+    public boolean notify(Long accountId, String message) {
         if (ThreadLocalRandom.current().nextDouble() < simulatedFailureRate) {
             throw new NotificationDeliveryException(SIMULATED_FAILURE_MESSAGE);
         }
         log.info("Notificação enviada para a conta {}: {}", accountId, message);
+        return true;
     }
 
-    public void notifyFallback(Long accountId, String message, Throwable cause) {
+    public boolean notifyFallback(Long accountId, String message, Throwable cause) {
         log.warn("Notificação para a conta {} não entregue: {}", accountId, cause.getMessage());
+        return false;
     }
 }

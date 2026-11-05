@@ -25,6 +25,7 @@ services:
       DB_NAME: bank
       DB_USER: bank
       DB_PASSWORD: bank
+      NOTIFICATION_FAILURE_RATE: ${NOTIFICATION_FAILURE_RATE:-0.0}
     ports:
       - "8080:8080"
     depends_on:

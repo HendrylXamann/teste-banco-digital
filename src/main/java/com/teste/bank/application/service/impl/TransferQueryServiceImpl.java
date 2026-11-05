@@ -9,19 +9,12 @@ import com.teste.bank.domain.repository.AccountRepository;
 import com.teste.bank.domain.repository.TransferRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class TransferQueryServiceImpl implements TransferQueryService {
-
-    private static final int MAX_PAGE_SIZE = 100;
-    private static final Sort NEWEST_FIRST = Sort.by(
-            Sort.Order.desc("createdAt"), Sort.Order.desc("id")
-    );
 
     private final AccountRepository accountRepository;
     private final TransferRepository transferRepository;
@@ -32,8 +25,7 @@ public class TransferQueryServiceImpl implements TransferQueryService {
         if (!accountRepository.existsById(accountId)) {
             throw new AccountNotFoundException(accountId);
         }
-        var pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE), NEWEST_FIRST);
-        return transferRepository.findStatementByAccountId(accountId, pageable)
+        return transferRepository.findStatementByAccountId(accountId, PageRequests.newestFirst(page, size))
                 .map(transfer -> toEntry(transfer, accountId));
     }
 

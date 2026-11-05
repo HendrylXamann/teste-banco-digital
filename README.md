@@ -58,6 +58,7 @@ No Windows, use `mvnw.cmd` no lugar de `./mvnw`.
 | GET | `/accounts/{id}` | Consulta conta e saldo | 200 |
 | GET | `/accounts/{id}/transfers?page=0&size=20` | Extrato paginado, mais recentes primeiro | 200 |
 | POST | `/transfers` | Transfere valor. Header obrigatório `Idempotency-Key` | 201 nova / 200 repetida |
+| GET | `/accounts/{id}/notifications?page=0&size=20` | Notificações recebidas pela conta, mais recentes primeiro | 200 |
 
 ### Exemplos
 
@@ -74,6 +75,8 @@ curl -X POST http://localhost:8080/transfers \
   -d '{"fromAccountId":1,"toAccountId":2,"amount":100.00}'
 
 curl "http://localhost:8080/accounts/1/transfers?page=0&size=20"
+
+curl "http://localhost:8080/accounts/1/notifications?page=0&size=20"
 ```
 
 ### Erros (RFC 7807 — `ProblemDetail`)
@@ -133,7 +136,7 @@ Em contas, a separação **não** foi aplicada: `AccountService` tem apenas um c
 - **O**: um novo canal de notificação (e-mail, SMS, fila) é uma nova implementação de `NotificationGateway`, sem tocar no listener nem no serviço.
 - **L**: qualquer implementação de `NotificationGateway` substitui a atual; os testes usam um mock da interface.
 - **I**: `NotificationGateway` expõe um único método.
-- **D**: os controllers dependem das interfaces `AccountService`, `TransferService` e `TransferQueryService`, não das implementações (`*Impl` em `application.service.impl`). O listener depende da abstração `NotificationGateway`, definida no domínio. Os controllers não conhecem repositórios, e a camada `application` não conhece DTOs HTTP (recebe `TransferCommand`).
+- **D**: os controllers dependem das interfaces (`AccountService`, `TransferService`, `TransferQueryService`, `NotificationQueryService`), não das implementações (`*Impl` em `application.service.impl`). O listener depende da interface `NotificationService`, e a `NotificationServiceImpl` depende da abstração `NotificationGateway`, definida no domínio. Os controllers não conhecem repositórios, e a camada `application` não conhece DTOs HTTP (recebe `TransferCommand`).
 
 ### Por que camadas, e não hexagonal completo
 
@@ -166,14 +169,27 @@ Isso protege contra reenvios do cliente (timeout de rede, duplo clique), o probl
 - `TransferService` publica `TransferCompletedEvent`.
 - `TransferNotificationListener` usa `@TransactionalEventListener(phase = AFTER_COMMIT)` + `@Async` em um pool dedicado: só notifica transferências efetivamente gravadas e não atrasa a resposta HTTP.
 - O pagador e o recebedor são notificados.
-- `LogNotificationGateway` simula o provedor (log) e é protegido por `@Retry` (3 tentativas) e `@CircuitBreaker`. A variável `NOTIFICATION_FAILURE_RATE` (0.0 a 1.0) simula falhas para demonstrar o comportamento.
+- `LogNotificationGateway` simula o provedor (log) e é protegido por `@Retry` (3 tentativas) e `@CircuitBreaker`. A variável `NOTIFICATION_FAILURE_RATE` (0.0 a 1.0) simula falhas para demonstrar o comportamento, inclusive no Docker: `$env:NOTIFICATION_FAILURE_RATE="1.0"; docker compose up --build`.
 - Falha na notificação **não** desfaz a transferência.
+
+### Notificações gravadas no banco (comprovação do requisito)
+
+Como o envio é simulado, cada notificação também é **gravada na tabela `notifications`** (migration `V4`), para que o requisito possa ser verificado pela própria API, sem depender de ler o log:
+
+- `NotificationServiceImpl` chama o gateway e grava o resultado com status `SENT` (entregue) ou `FAILED` (o fallback desistiu depois das tentativas). Para isso o gateway passou a devolver `boolean`.
+- `GET /accounts/{id}/notifications` lista as notificações da conta, paginadas e mais recentes primeiro, com transferência, direção (`DEBIT` para quem pagou, `CREDIT` para quem recebeu), mensagem e status.
+- O log continua sendo escrito como antes; a tabela é um registro adicional.
+- A chamada ao gateway fica **fora** de transação, e só a gravação abre uma: as tentativas de retry não seguram uma conexão do banco.
+- Como o envio é assíncrono, a notificação aparece alguns milissegundos depois da resposta da transferência.
+- Escrita e consulta ficam em services separados (`NotificationService` e `NotificationQueryService`), seguindo o mesmo critério de CQS das transferências.
+
+Em produção, essa tabela seria a base do padrão **Outbox**: a notificação seria gravada na mesma transação da transferência e enviada depois, por um processo separado, garantindo a entrega mesmo se a aplicação cair.
 
 ### Por que não há CRUD completo
 
 - **Contas**: sem `PUT`, porque saldo só pode mudar por transferência; sem `DELETE`, porque a conta tem histórico financeiro.
 - **Transferências**: registro financeiro é imutável. Correção se faz com estorno, uma nova transferência inversa.
-- **Notificações**: são efeito colateral da transferência, não um recurso exposto na API.
+- **Notificações**: são efeito colateral da transferência, por isso só existe consulta (`GET`); ninguém cria nem altera uma notificação pela API.
 
 ### Erros centralizados
 
@@ -197,22 +213,23 @@ Todas as mensagens de erro ficam no enum `ErrorCode` (título + template da mens
 - No máximo **3 dependências injetadas por classe**, sempre via construtor.
 - No máximo **20 linhas por método**; métodos maiores são quebrados em métodos privados com nomes descritivos.
 - Variáveis locais sempre com `var`. O tipo fica explícito onde o Java exige: campos, parâmetros e retornos.
-- Objetos de dados (entidades, records de request/response, comandos, eventos) são criados por **builder** (`@Builder` do Lombok). Nas entidades, o construtor sem argumentos é `protected` (exigência do JPA) e o completo é `private`, então o único jeito de montar uma entidade é pelo builder. Beans do Spring (services, gateways) e exceções continuam com construtor: os beans são instanciados pelo container via injeção, e exceções são criadas no ponto do erro com o `ErrorCode`.
+- Objetos de dados (entidades, records de request/response, comandos, eventos) são criados por **builder** (`@Builder` do Lombok). Nas entidades, `@NoArgsConstructor` existe porque o JPA exige um construtor vazio, e `@AllArgsConstructor` porque é o construtor que o `@Builder` usa por baixo. Beans do Spring (services, gateways) e exceções continuam com construtor: os beans são instanciados pelo container via injeção, e exceções são criadas no ponto do erro com o `ErrorCode`.
 - Controllers nunca expõem entidades: recebem e devolvem apenas DTOs (`records`), convertidos pelos mappers.
 
 ## Testes
 
 | Tipo | Classes | O que garante |
 |---|---|---|
-| Unitário | `TransferValidatorTest`, `TransferServiceImplTest`, `AccountServiceImplTest`, `TransferQueryServiceImplTest`, `TransferNotificationListenerTest`, `LogNotificationGatewayTest`, `ErrorCodeTest`, `ProblemDetailFactoryTest` | Regras e limites (saldo exato, um centavo a menos, valor nulo/zero/negativo), ordem dos locks, idempotência, normalização de escala, paginação fora dos limites, evento publicado só em sucesso, todo `ErrorCode` com status |
-| Web (`@WebMvcTest`) | `AccountControllerTest`, `TransferControllerTest` | Cada campo inválido, JSON mal formado, corpo ausente, tipo errado na URL, header ausente/em branco/longo demais, 404/409/422/500/503 com `code` correto e sem vazar detalhe interno |
+| Unitário | `TransferValidatorTest`, `TransferServiceImplTest`, `AccountServiceImplTest`, `TransferQueryServiceImplTest`, `NotificationServiceImplTest`, `NotificationQueryServiceImplTest`, `TransferNotificationListenerTest`, `LogNotificationGatewayTest`, `ErrorCodeTest`, `ProblemDetailFactoryTest` | Regras e limites (saldo exato, um centavo a menos, valor nulo/zero/negativo), ordem dos locks, idempotência, normalização de escala, paginação fora dos limites, evento publicado só em sucesso, notificação gravada como `SENT` ou `FAILED`, todo `ErrorCode` com status |
+| Web (`@WebMvcTest`) | `AccountControllerTest`, `TransferControllerTest`, `NotificationControllerTest` | Cada campo inválido, JSON mal formado, corpo ausente, tipo errado na URL, header ausente/em branco/longo demais, 404/409/422/500/503 com `code` correto e sem vazar detalhe interno |
 | Integração (Testcontainers) | `TransferConcurrencyIT` | 100 transferências cruzadas simultâneas sem perder centavo; 50 débitos concorrentes sem saldo negativo; mesma chave em paralelo gera uma única transferência; constraints do banco rejeitando dados inválidos |
+| Integração (Testcontainers) | `TransferNotificationIT` | Notificação gravada para pagador e recebedor só depois do commit; visível pelo `GET`; transferência recusada (rollback) não gera notificação |
 
-**Por que um único teste de integração.** A maior parte do comportamento é coberta por testes unitários e de controller, que são rápidos e isolam cada regra. O que eles não conseguem provar é o que depende do banco real: `SELECT ... FOR UPDATE`, ordem de lock sem deadlock, `lock_timeout`, a constraint única da idempotência e os `CHECK`s. Com mocks, um teste de concorrência passaria mesmo com o lock quebrado. Por isso existe um teste de integração, focado justamente no requisito mais crítico do desafio (consistência sob alta concorrência), rodando contra um PostgreSQL de verdade via Testcontainers. Fluxos simples, como cadastrar ou consultar conta, não ganhariam nada com um teste de integração além de lentidão.
+**Por que só dois testes de integração.** A maior parte do comportamento é coberta por testes unitários e de controller, que são rápidos e isolam cada regra. O que eles não conseguem provar é o que depende do banco real: `SELECT ... FOR UPDATE`, ordem de lock sem deadlock, `lock_timeout`, a constraint única da idempotência e os `CHECK`s. Com mocks, um teste de concorrência passaria mesmo com o lock quebrado. Por isso existe um teste de integração focado no requisito mais crítico do desafio (consistência sob alta concorrência), rodando contra um PostgreSQL de verdade via Testcontainers. O segundo, `TransferNotificationIT`, existe pelo mesmo motivo: o `AFTER_COMMIT` só dispara com um commit real, e o envio assíncrono só acontece com o contexto do Spring de pé; com mocks, não há como provar que uma transferência recusada não gera notificação. Fluxos simples, como cadastrar ou consultar conta, não ganhariam nada com um teste de integração além de lentidão.
 
 O sufixo `IT` (*Integration Test*) é a convenção do Maven: `*Test` roda no `mvn test` (plugin Surefire, rápido, sem infraestrutura), e `*IT` roda no `mvn verify` (plugin Failsafe), porque precisa de Docker e é mais lento.
 
-Os dados de teste ficam em fixtures (`AccountFixture`, `TransferFixture`, `Amounts`), com valores fixos e nomeados, para que uma falha seja reproduzível. Valores aleatórios aparecem só onde o conteúdo é irrelevante, como as chaves de idempotência (UUID). Nos testes de controller, os payloads são gerados a partir dos próprios records de request via `ObjectMapper`; JSON escrito à mão só existe no teste de JSON mal formado.
+Os dados de teste ficam em fixtures (`AccountFixture`, `TransferFixture`, `NotificationFixture`, `Amounts`), com valores fixos e nomeados, para que uma falha seja reproduzível. Valores aleatórios aparecem só onde o conteúdo é irrelevante, como as chaves de idempotência (UUID). Nos testes de controller, os payloads são gerados a partir dos próprios records de request via `ObjectMapper`; JSON escrito à mão só existe no teste de JSON mal formado.
 
 ## Próximos passos em produção
 

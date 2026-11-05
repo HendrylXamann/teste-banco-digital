@@ -1,32 +1,37 @@
 package com.teste.bank.infrastructure.notification;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.teste.bank.fixture.AccountFixture;
+import com.teste.bank.fixture.NotificationFixture;
 import org.junit.jupiter.api.Test;
 
 class LogNotificationGatewayTest {
 
-    @Test
-    void shouldSendWhenProviderIsHealthy() {
-        var gateway = new LogNotificationGateway(0.0);
+    private static final double NEVER_FAILS = 0.0;
+    private static final double ALWAYS_FAILS = 1.0;
 
-        assertThatCode(() -> gateway.notify(1L, "mensagem")).doesNotThrowAnyException();
+    @Test
+    void shouldReportDeliveryWhenProviderIsHealthy() {
+        var gateway = new LogNotificationGateway(NEVER_FAILS);
+
+        assertThat(gateway.notify(AccountFixture.SOURCE_ID, NotificationFixture.MESSAGE)).isTrue();
     }
 
     @Test
     void shouldThrowWhenProviderFails() {
-        var gateway = new LogNotificationGateway(1.0);
+        var gateway = new LogNotificationGateway(ALWAYS_FAILS);
 
-        assertThatThrownBy(() -> gateway.notify(1L, "mensagem"))
+        assertThatThrownBy(() -> gateway.notify(AccountFixture.SOURCE_ID, NotificationFixture.MESSAGE))
                 .isInstanceOf(NotificationDeliveryException.class);
     }
 
     @Test
-    void shouldSwallowFailureInFallback() {
-        var gateway = new LogNotificationGateway(1.0);
+    void shouldReportFailureInFallbackInsteadOfThrowing() {
+        var gateway = new LogNotificationGateway(ALWAYS_FAILS);
+        var cause = new NotificationDeliveryException(NotificationFixture.MESSAGE);
 
-        assertThatCode(() -> gateway.notifyFallback(1L, "mensagem", new NotificationDeliveryException("falha")))
-                .doesNotThrowAnyException();
+        assertThat(gateway.notifyFallback(AccountFixture.SOURCE_ID, NotificationFixture.MESSAGE, cause)).isFalse();
     }
 }
